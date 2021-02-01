@@ -603,20 +603,20 @@ class StretchBodyNode(Node):
                                                                        '/switch_to_manipulation_mode',
                                                                        self.manipulation_mode_service_callback)
 
-        self.switch_to_navigation_mode_service = self.create_service('/switch_to_navigation_mode',
-                                                                     Trigger,
+        self.switch_to_navigation_mode_service = self.create_service(Trigger,
+                                                                     '/switch_to_navigation_mode',
                                                                      self.navigation_mode_service_callback)
 
-        self.switch_to_position_mode_service = self.create_service('/switch_to_position_mode',
-                                                                   Trigger,
+        self.switch_to_position_mode_service = self.create_service(Trigger,
+                                                                   '/switch_to_position_mode',
                                                                    self.position_mode_service_callback)
 
-        self.stop_the_robot_service = self.create_service('/stop_the_robot',
-                                                          Trigger,
+        self.stop_the_robot_service = self.create_service(Trigger,
+                                                          '/stop_the_robot',
                                                           self.stop_the_robot_callback)
 
-        self.runstop_service = self.create_service('/runstop',
-                                                   SetBool,
+        self.runstop_service = self.create_service(SetBool,
+                                                   '/runstop',
                                                    self.runstop_service_callback)
 
     def parameter_callback(self, parameters):
