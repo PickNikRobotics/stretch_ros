@@ -9,7 +9,7 @@ import stretch_body.robot as rb
 from stretch_body.hello_utils import ThreadServiceExit
 
 import tf2_ros
-import tf_conversions
+import pyquaternion
 
 import rclpy
 from rclpy.duration import Duration
@@ -18,12 +18,8 @@ from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TransformStamped
 
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction
-from control_msgs.msg import FollowJointTrajectoryResult
-
-from std_srvs.srv import Trigger, TriggerResponse
-from std_srvs.srv import SetBool, SetBoolResponse
+from std_srvs.srv import Trigger
+from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState, Imu, MagneticField
@@ -45,7 +41,7 @@ class StretchBodyNode(Node):
         self.use_robotis_end_of_arm = True
 
         self.default_goal_timeout_s = 10.0
-        self.default_goal_timeout_duration = Duration(self.default_goal_timeout_s)
+        self.default_goal_timeout_duration = Duration(seconds=self.default_goal_timeout_s)
 
         # Initialize calibration offsets
         self.head_tilt_calibrated_offset_rad = 0.0
@@ -199,7 +195,7 @@ class StretchBodyNode(Node):
             head_tilt_vel = head_tilt_status['vel']
             head_tilt_effort = head_tilt_status['effort']
 
-        q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)
+        q = pyquaternion.Quaternion(axis=[0, 0, 1], angle=theta)
 
         if self.broadcast_odom_tf:
             # publish odometry via TF
@@ -210,10 +206,10 @@ class StretchBodyNode(Node):
             t.transform.translation.x = x
             t.transform.translation.y = y
             t.transform.translation.z = 0.0
-            t.transform.rotation.x = q[0]
-            t.transform.rotation.y = q[1]
-            t.transform.rotation.z = q[2]
-            t.transform.rotation.w = q[3]
+            t.transform.rotation.x = q.x
+            t.transform.rotation.y = q.y
+            t.transform.rotation.z = q.z
+            t.transform.rotation.w = q.w
             self.tf_broadcaster.sendTransform(t)
 
         # publish odometry via the odom topic
@@ -223,10 +219,10 @@ class StretchBodyNode(Node):
         odom.child_frame_id = self.base_frame_id
         odom.pose.pose.position.x = x
         odom.pose.pose.position.y = y
-        odom.pose.pose.orientation.x = q[0]
-        odom.pose.pose.orientation.y = q[1]
-        odom.pose.pose.orientation.z = q[2]
-        odom.pose.pose.orientation.w = q[3]
+        odom.pose.pose.orientation.x = q.x
+        odom.pose.pose.orientation.y = q.y
+        odom.pose.pose.orientation.z = q.z
+        odom.pose.pose.orientation.w = q.w
         odom.twist.twist.linear.x = x_vel
         odom.twist.twist.angular.z = theta_vel
         self.odom_pub.publish(odom)
@@ -431,28 +427,28 @@ class StretchBodyNode(Node):
             self.robot.push_command()
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
-        return TriggerResponse(
+        return Trigger.Result(
             success=True,
             message='Stopped the robot.'
             )
 
     def navigation_mode_service_callback(self, request):
         self.turn_on_navigation_mode()
-        return TriggerResponse(
+        return Trigger.Result(
             success=True,
             message='Now in navigation mode.'
             )
 
     def manipulation_mode_service_callback(self, request):
         self.turn_on_manipulation_mode()
-        return TriggerResponse(
+        return Trigger.Result(
             success=True,
             message='Now in manipulation mode.'
             )
 
     def position_mode_service_callback(self, request):
         self.turn_on_position_mode()
-        return TriggerResponse(
+        return Trigger.Result(
             success=True,
             message='Now in position mode.'
             )
@@ -478,7 +474,7 @@ class StretchBodyNode(Node):
         else:
             self.robot.pimu.runstop_event_reset()
 
-        return SetBoolResponse(
+        return SetBool.Result(
             success=True,
             message='is_runstopped: {0}'.format(request.data)
             )
