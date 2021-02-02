@@ -25,9 +25,8 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState, Imu, MagneticField
 from std_msgs.msg import Header
 
-import hello_helpers.hello_misc as hm
 from hello_helpers.gripper_conversion import GripperConversion
-from joint_trajectory_server import JointTrajectoryAction
+from .joint_trajectory_server import JointTrajectoryAction
 
 GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
