@@ -11,11 +11,13 @@
                 <param name="start_position">0.0</param>
                 <command_interface name="position" />
                 <state_interface name="position"/>
+                <state_interface name="velocity"/>
             </joint>
             <joint name="joint_gripper_finger_right">
                 <param name="start_position">0.0</param>
                 <command_interface name="position" />
                 <state_interface name="position"/>
+                <state_interface name="velocity"/>
             </joint>
         </ros2_control>
 
