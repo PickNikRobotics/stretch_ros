@@ -133,6 +133,10 @@ class StretchBodyNode(Node):
             x_vel = 0.0
             x_effort = 0.0
 
+        # Convert to floats for ROS2 message definition compatibility
+        x = float(x)
+        y = float(y)
+
         # assign relevant arm status to variables
         arm_status = robot_status['arm']
         if self.backlash_state['wrist_extension_retracted']:
