@@ -29,7 +29,7 @@ def generate_launch_description():
                                  name='robot_state_publisher',
                                  output='both',
                                  parameters=[{'robot_description': xacro.process_file(robot_description_path).toxml()},
-                                             {'publish_frequency': 15}])
+                                             {'publish_frequency': 15.0}])
 
     stretch_driver = Node(package='stretch_core',
                           executable='stretch_driver',
