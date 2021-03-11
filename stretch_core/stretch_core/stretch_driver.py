@@ -490,6 +490,7 @@ class StretchBodyNode(Node):
         self.declare_parameter('mode', 'position')
         self.declare_parameter('broadcast_odom_tf', False)
         self.declare_parameter('controller_calibration_file', 'not_set')
+        self.declare_parameter('timeout', 1.0)
         self.declare_parameter('rate', 15.0)
         self.declare_parameter('use_fake_mechaduinos', False)
         self.declare_parameter('fail_out_of_range_goal', True)
@@ -501,7 +502,7 @@ class StretchBodyNode(Node):
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
         self.get_logger().info('broadcast_odom_tf = ' + str(self.broadcast_odom_tf))
         if self.broadcast_odom_tf:
-            self.tf_broadcaster = tf2_ros.TransformBroadcaster()
+            self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         large_ang = 45.0 * np.pi/180.0
 
@@ -550,13 +551,13 @@ class StretchBodyNode(Node):
 
         self.max_arm_height = 1.1
 
-        self.odom_pub = self.node.create_publisher(Odometry, 'odom')
+        self.odom_pub = self.create_publisher(Odometry, 'odom', 1)
 
-        self.imu_mobile_base_pub = self.node.create_publisher(Imu, 'imu_mobile_base')
-        self.magnetometer_mobile_base_pub = self.node.create_publisher(MagneticField, 'magnetometer_mobile_base')
-        self.imu_wrist_pub = self.node.create_publisher(Imu, 'imu_wrist')
+        self.imu_mobile_base_pub = self.create_publisher(Imu, 'imu_mobile_base', 1)
+        self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
+        self.imu_wrist_pub = self.create_publisher(Imu, 'imu_wrist', 1)
 
-        self.node.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback)
+        self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1)
 
         # ~ symbol gets parameter from private namespace
         self.joint_state_rate = self.get_parameter('rate').value
@@ -578,10 +579,10 @@ class StretchBodyNode(Node):
         # TODO: check with the actuators to see if calibration is required
         #self.calibrate()
 
-        self.joint_state_pub = self.node.create_publisher(JointState, 'joint_states')
+        self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
 
         self.command_base_velocity_and_publish_joint_state_rate = self.create_rate(self.joint_state_rate)
-        self.last_twist_time = self.node.get_clock().now()
+        self.last_twist_time = self.get_clock().now()
 
         # start action server for joint trajectories
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
