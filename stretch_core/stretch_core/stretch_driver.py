@@ -591,7 +591,6 @@ class StretchBodyNode(Node):
         # start action server for joint trajectories
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
         self.joint_trajectory_action = JointTrajectoryAction(self)
-        self.joint_trajectory_action.server.start()
 
         if mode == "position":
             self.turn_on_position_mode()
