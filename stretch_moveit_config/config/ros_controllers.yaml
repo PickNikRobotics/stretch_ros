@@ -1,8 +1,11 @@
 controller_manager:
   ros__parameters:
-    update_rate: 2  # Hz
+    update_rate: 100  # Hz
 
     stretch_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    stretch_head_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
     joint_state_controller:
@@ -26,3 +29,9 @@ gripper_controller:
     joints:
       - joint_gripper_finger_left
       - joint_gripper_finger_right
+
+stretch_head_controller:
+  ros__parameters:
+    joints:
+      - joint_head_pan
+      - joint_head_tilt
