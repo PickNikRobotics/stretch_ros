@@ -414,7 +414,7 @@ class StretchBodyNode(Node):
 
     ######## SERVICE CALLBACKS #######
 
-    def stop_the_robot_callback(self, request):
+    def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
             self.stop_the_robot = True
 
@@ -431,33 +431,29 @@ class StretchBodyNode(Node):
             self.robot.push_command()
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
-        return Trigger.Result(
-            success=True,
-            message='Stopped the robot.'
-            )
+        response.success = True
+        response.message = 'Stopped the robot.'
+        return response
 
-    def navigation_mode_service_callback(self, request):
+    def navigation_mode_service_callback(self, request, response):
         self.turn_on_navigation_mode()
-        return Trigger.Result(
-            success=True,
-            message='Now in navigation mode.'
-            )
+        response.success = True
+        response.message = 'Now in navigation mode.'
+        return response
 
-    def manipulation_mode_service_callback(self, request):
+    def manipulation_mode_service_callback(self, request, response):
         self.turn_on_manipulation_mode()
-        return Trigger.Result(
-            success=True,
-            message='Now in manipulation mode.'
-            )
+        response.success = True
+        response.message = 'Now in manipulation mode.'
+        return response
 
-    def position_mode_service_callback(self, request):
+    def position_mode_service_callback(self, request, response):
         self.turn_on_position_mode()
-        return Trigger.Result(
-            success=True,
-            message='Now in position mode.'
-            )
+        response.success = True
+        response.message = 'Now in position mode.'
+        return response
 
-    def runstop_service_callback(self, request):
+    def runstop_service_callback(self, request, response):
         if request.data:
             with self.robot_stop_lock:
                 self.stop_the_robot = True
@@ -478,10 +474,9 @@ class StretchBodyNode(Node):
         else:
             self.robot.pimu.runstop_event_reset()
 
-        return SetBool.Result(
-            success=True,
-            message='is_runstopped: {0}'.format(request.data)
-            )
+        response.success = True,
+        response.message = 'is_runstopped: {0}'.format(request.data)
+        return response
 
     ########### ROS Setup #######
     def ros_setup(self):
