@@ -626,6 +626,7 @@ class StretchBodyNode(Node):
             # odometry, and publish joint states
             while rclpy.ok():
                 self.command_mobile_base_velocity_and_publish_state()
+                rclpy.spin_once(self)
                 self.command_base_velocity_and_publish_joint_state_rate.sleep()
         except (KeyboardInterrupt, ThreadServiceExit):
             self.robot.stop()
