@@ -120,12 +120,12 @@ class StretchBodyNode(Node):
         x_raw = x
         y = base_status['y']
         theta = base_status['theta']
-        x_vel = base_status['x_vel']
+        x_vel = float(base_status['x_vel'])
         x_vel_raw = x_vel
         y_vel = base_status['y_vel']
         x_effort = base_status['effort'][0]
         x_effort_raw = x_effort
-        theta_vel = base_status['theta_vel']
+        theta_vel = float(base_status['theta_vel'])
         pose_time_s = base_status['pose_time_s']
 
         if self.robot_mode == 'manipulation':
@@ -304,7 +304,7 @@ class StretchBodyNode(Node):
         # set joint_state
         joint_state.position = positions
         joint_state.velocity = velocities
-        joint_state.effort = efforts
+        joint_state.effort = list(map(float, efforts))
         self.joint_state_pub.publish(joint_state)
 
         ##################################################
@@ -323,13 +323,13 @@ class StretchBodyNode(Node):
         i = Imu()
         i.header.stamp = current_stamp
         i.header.frame_id = 'imu_mobile_base'
-        i.angular_velocity.x = gx
-        i.angular_velocity.y = gy
-        i.angular_velocity.z = gz
+        i.angular_velocity.x = float(gx)
+        i.angular_velocity.y = float(gy)
+        i.angular_velocity.z = float(gz)
 
-        i.linear_acceleration.x = ax
-        i.linear_acceleration.y = ay
-        i.linear_acceleration.z = az
+        i.linear_acceleration.x = float(ax)
+        i.linear_acceleration.y = float(ay)
+        i.linear_acceleration.z = float(az)
         self.imu_mobile_base_pub.publish(i)
 
         m = MagneticField()
@@ -345,9 +345,9 @@ class StretchBodyNode(Node):
         i = Imu()
         i.header.stamp = current_stamp
         i.header.frame_id = 'accel_wrist'
-        i.linear_acceleration.x = ax
-        i.linear_acceleration.y = ay
-        i.linear_acceleration.z = az
+        i.linear_acceleration.x = float(ax)
+        i.linear_acceleration.y = float(ay)
+        i.linear_acceleration.z = float(az)
         self.imu_wrist_pub.publish(i)
         ##################################################
 
