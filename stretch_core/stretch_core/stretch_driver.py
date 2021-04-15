@@ -77,7 +77,7 @@ class StretchBodyNode(Node):
             return
         self.linear_velocity_mps = twist.linear.x
         self.angular_velocity_radps = twist.angular.z
-        self.last_twist_time = self.node.get_clock().now()
+        self.last_twist_time = self.get_clock().now()
         self.robot_mode_rwlock.release_read()
 
     def command_mobile_base_velocity_and_publish_state(self):
@@ -90,7 +90,7 @@ class StretchBodyNode(Node):
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
         if self.robot_mode == 'navigation':
-            time_since_last_twist = self.node.get_clock().now() - self.last_twist_time
+            time_since_last_twist = self.get_clock().now() - self.last_twist_time
             if time_since_last_twist < self.timeout:
                 self.robot.base.set_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
                 self.robot.push_command()
