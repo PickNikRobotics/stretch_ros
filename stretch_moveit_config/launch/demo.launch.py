@@ -97,6 +97,13 @@ def generate_launch_description():
     ld.add_action(rviz_node)
 
     if args.use_fake_controller:
+        static_tf = Node(package='tf2_ros',
+                         executable='static_transform_publisher',
+                         name='static_transform_publisher',
+                         output='log',
+                         arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0', 'odom', 'base_link'])
+        ld.add_action(static_tf)
+
         # Publish TF
         robot_state_publisher = Node(package='robot_state_publisher',
                                      executable='robot_state_publisher',
