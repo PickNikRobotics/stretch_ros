@@ -6,7 +6,7 @@ repositories:
   moveit2:
     type: git
     url: https://github.com/JafarAbdi/moveit2
-    version: pr-diff_drive_multi_dof_controller
+    version: pr-add_multi_dof_traj_field
   moveit_msgs:
     type: git
     url: https://github.com/ros-planning/moveit_msgs
@@ -26,7 +26,7 @@ repositories:
   control_msgs:
     type: git
     url: https://github.com/JafarAbdi/control_msgs
-    version: pr-follow_multi_dof_traj
+    version: pr-add_multi_dof_traj_field
   ros2_control:
     type: git
     url: https://github.com/ros-controls/ros2_control
@@ -51,3 +51,7 @@ repositories:
     type: git
     url: https://github.com/PickNikRobotics/rosparam_shortcuts
     version: ros2
+  realtime_tools:
+    type: git
+    url: https://github.com/ros-controls/realtime_tools
+    version: foxy-devel
