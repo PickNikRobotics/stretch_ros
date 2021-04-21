@@ -1,8 +1,9 @@
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution, ThisLaunchFileDir
+
 from launch_ros.actions import Node
-from launch.substitutions import ThisLaunchFileDir, PathJoinSubstitution
 
 
 def generate_launch_description():
@@ -15,4 +16,5 @@ def generate_launch_description():
         # KEYBOARD TELEOP
         Node(package='stretch_core',
              executable='keyboard_teleop',
+             prefix='xterm -e',
              output='screen')])
