@@ -2,7 +2,7 @@ repositories:
   stretch_ros:
     type: git
     url: https://github.com/PickNikRobotics/stretch_ros
-    version: ros2_diffdrive
+    version: ros2
   moveit2:
     type: git
     url: https://github.com/JafarAbdi/moveit2
@@ -14,6 +14,10 @@ repositories:
   moveit_resources:
     type: git
     url: https://github.com/ros-planning/moveit_resources
+    version: ros2
+  moveit_task_constructor:
+    type: git
+    url: https://github.com/JafarAbdi/moveit_task_constructor
     version: ros2
   geometric_shapes:
     type: git
