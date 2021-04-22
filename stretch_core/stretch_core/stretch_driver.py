@@ -560,9 +560,10 @@ class StretchBodyNode(Node):
 
         # ~ symbol gets parameter from private namespace
         self.joint_state_rate = self.get_parameter('rate').value
-        self.timeout = self.get_parameter('timeout').value
+        self.timeout_s = self.get_parameter('timeout').value
+        self.timeout = Duration(seconds=self.timeout_s)
         self.get_logger().info("{0} rate = {1} Hz".format(self.node_name, self.joint_state_rate))
-        self.get_logger().info("{0} timeout = {1} s".format(self.node_name, self.timeout))
+        self.get_logger().info("{0} timeout = {1} s".format(self.node_name, self.timeout_s))
 
         self.use_fake_mechaduinos = self.get_parameter('use_fake_mechaduinos').value
         self.get_logger().info("{0} use_fake_mechaduinos = {1}".format(self.node_name, self.use_fake_mechaduinos))
@@ -636,7 +637,6 @@ def main():
     rclpy.init()
     node = StretchBodyNode()
     node.main()
-    node.destroy_node()
     rclpy.shutdown()
 
 
