@@ -120,7 +120,7 @@ def generate_launch_description():
         )
         ld.add_action(fake_joint_driver_node)
 
-        for controller in ["stretch_controller", "gripper_controller", "joint_state_controller"]:
+        for controller in ["stretch_controller", "joint_state_controller"]:
             ld.add_action(
                 ExecuteProcess(
                     cmd=["ros2 run controller_manager spawner.py {}".format(controller)],

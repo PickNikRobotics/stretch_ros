@@ -8,11 +8,9 @@ controller_manager:
     joint_state_controller:
       type: joint_state_controller/JointStateController
 
-    gripper_controller:
-      type: joint_trajectory_controller/JointTrajectoryController
-
 stretch_controller:
   ros__parameters:
+    allow_partial_joints_goal: true
     joints:
       - joint_lift
       - joint_arm_l3
@@ -20,9 +18,5 @@ stretch_controller:
       - joint_arm_l1
       - joint_arm_l0
       - joint_wrist_yaw
-
-gripper_controller:
-  ros__parameters:
-    joints:
       - joint_gripper_finger_left
       - joint_gripper_finger_right
