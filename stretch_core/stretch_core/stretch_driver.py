@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
+import threading
+
 import yaml
 import numpy as np
 import threading
@@ -302,8 +304,8 @@ class StretchBodyNode(Node):
             efforts.append(0.0)
 
         # set joint_state
-        joint_state.position = positions
-        joint_state.velocity = velocities
+        joint_state.position = list(map(float, positions))
+        joint_state.velocity = list(map(float, velocities))
         joint_state.effort = list(map(float, efforts))
         self.joint_state_pub.publish(joint_state)
 
@@ -627,7 +629,6 @@ class StretchBodyNode(Node):
             # odometry, and publish joint states
             while rclpy.ok():
                 self.command_mobile_base_velocity_and_publish_state()
-                rclpy.spin_once(self)
                 self.command_base_velocity_and_publish_joint_state_rate.sleep()
         except (KeyboardInterrupt, ThreadServiceExit):
             self.robot.stop()
@@ -636,8 +637,12 @@ class StretchBodyNode(Node):
 def main():
     rclpy.init()
     node = StretchBodyNode()
+    thread = threading.Thread(target=rclpy.spin, args=(node, ), daemon=True)
+    thread.start()
+
     node.main()
     rclpy.shutdown()
+    thread.join()
 
 
 if __name__ == '__main__':
