@@ -407,25 +407,25 @@ class TelescopingCommandGroup(SimpleCommandGroup):
             else:
                 for waypoint in points:
                     t = waypoint.time_from_start.sec + waypoint.time_from_start.nanosec / 1e9
-                    x = None
-                    v = None
-                    a = None
+                    x = 0.0
+                    vels = []
+                    accels = []
                     for index in self.index:
                         if len(waypoint.positions) > index:
-                            if x is None:
-                                x = waypoint.positions[index]
-                            else:
-                                x += waypoint.positions[index]
+                            x += waypoint.positions[index]
+
                         if len(waypoint.velocities) > index:
-                            if v is None:
-                                v = waypoint.velocities[index]
-                            else:
-                                v += waypoint.velocities[index]
+                            vels.append(waypoint.velocities[index])
                         if len(waypoint.accelerations) > index:
-                            if a is None:
-                                a = waypoint.accelerations[index]
-                            else:
-                                a += waypoint.accelerations[index]
+                            accels.append(waypoint.accelerations[index])
+                    if vels:
+                        v = sum(vels) / len(vels)
+                    else:
+                        v = None
+                    if accels:
+                        a = sum(accels) / len(accels)
+                    else:
+                        a = None
                     robot.arm.trajectory.add_waypoint(t_s=t, x_m=x, v_m=v, a_m=a)
 
     def set_goal(self, point, invalid_goal_callback, fail_out_of_range_goal, **kwargs):
