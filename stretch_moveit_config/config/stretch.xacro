@@ -10,9 +10,11 @@
         <xacro:include filename="stretch_arm.ros2_control.xacro" />
         <xacro:include filename="stretch_head.ros2_control.xacro" />
         <xacro:include filename="gripper.ros2_control.xacro" />
+        <xacro:include filename="stretch_base.ros2_control.xacro" />
 
         <xacro:stretch_arm_ros2_control name="StretchFakeJointDriver" />
         <xacro:stretch_head_ros2_control name="StretchHeadFakeJointDriver" />
+        <xacro:stretch_base_ros2_control name="StretchFakeJointDriver" />
         <xacro:gripper_ros2_control name="StretchGripperFakeJointDriver" />
     </xacro:if>
 </robot>

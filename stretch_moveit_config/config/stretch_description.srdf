@@ -67,10 +67,30 @@
         <joint name="joint_head_pan" value="1.0"/>
         <joint name="joint_head_tilt" value="0.5"/>
     </group_state>
+    <group_state name="HomeBase" group="mobile_base_arm">
+        <joint name="joint_arm_l0" value="0"/>
+        <joint name="joint_arm_l1" value="0"/>
+        <joint name="joint_arm_l2" value="0"/>
+        <joint name="joint_arm_l3" value="0"/>
+        <joint name="joint_lift" value="0.1033"/>
+        <joint name="joint_wrist_yaw" value="0"/>
+        <joint name="position" value="0 0 0"/>
+    </group_state>
+    <group_state name="ForwardBase" group="mobile_base_arm">
+        <joint name="joint_arm_l0" value="0"/>
+        <joint name="joint_arm_l1" value="0"/>
+        <joint name="joint_arm_l2" value="0"/>
+        <joint name="joint_arm_l3" value="0"/>
+        <joint name="joint_lift" value="0.1033"/>
+        <joint name="joint_wrist_yaw" value="0"/>
+        <joint name="position" value="1 0 0"/>
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="gripper" parent_link="link_grasp_center" group="stretch_arm"/>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <virtual_joint name="position" type="planar" parent_frame="odom" child_link="base_link"/>
+    <joint_property joint_name="position" property_name="motion_model" value="diff_drive" />
+    <joint_property joint_name="position" property_name="min_translational_distance" value="0.01" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="base_link" link2="camera_link" reason="Never"/>
     <disable_collisions link1="base_link" link2="laser" reason="Adjacent"/>
