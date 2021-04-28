@@ -67,7 +67,7 @@
         <joint name="joint_head_pan" value="1.0"/>
         <joint name="joint_head_tilt" value="0.5"/>
     </group_state>
-    <group_state name="HomeBase" group="mobile_base_arm">
+    <group_state name="home_base" group="mobile_base_arm">
         <joint name="joint_arm_l0" value="0"/>
         <joint name="joint_arm_l1" value="0"/>
         <joint name="joint_arm_l2" value="0"/>
@@ -76,7 +76,7 @@
         <joint name="joint_wrist_yaw" value="0"/>
         <joint name="position" value="0 0 0"/>
     </group_state>
-    <group_state name="ForwardBase" group="mobile_base_arm">
+    <group_state name="forward_base" group="mobile_base_arm">
         <joint name="joint_arm_l0" value="0"/>
         <joint name="joint_arm_l1" value="0"/>
         <joint name="joint_arm_l2" value="0"/>
