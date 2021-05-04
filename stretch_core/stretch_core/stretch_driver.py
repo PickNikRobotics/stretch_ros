@@ -15,7 +15,9 @@ import pyquaternion
 
 import rclpy
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TransformStamped
@@ -69,6 +71,8 @@ class StretchBodyNode(Node):
 
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
+
+        self.ros_setup()
 
     ###### MOBILE BASE VELOCITY METHODS #######
 
@@ -584,7 +588,6 @@ class StretchBodyNode(Node):
 
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
 
-        self.command_base_velocity_and_publish_joint_state_rate = self.create_rate(self.joint_state_rate)
         self.last_twist_time = self.get_clock().now()
 
         # start action server for joint trajectories
@@ -619,32 +622,22 @@ class StretchBodyNode(Node):
                                                    '/runstop',
                                                    self.runstop_service_callback)
 
+        timer_period = 1.0 / self.joint_state_rate
+        self.timer = self.create_timer(timer_period, self.command_mobile_base_velocity_and_publish_state)
+
     def parameter_callback(self, parameters):
         self.get_logger().warn('Dynamic parameters not available yet')
 
-    ########### MAIN ############
-    def main(self):
-        self.ros_setup()
-
-        try:
-            # start loop to command the mobile base velocity, publish
-            # odometry, and publish joint states
-            while rclpy.ok():
-                self.command_mobile_base_velocity_and_publish_state()
-                self.command_base_velocity_and_publish_joint_state_rate.sleep()
-        except (KeyboardInterrupt, ThreadServiceExit):
-            self.robot.stop()
-
 
 def main():
-    rclpy.init()
-    node = StretchBodyNode()
-    thread = threading.Thread(target=rclpy.spin, args=(node, ), daemon=True)
-    thread.start()
-
-    node.main()
-    rclpy.shutdown()
-    thread.join()
+    try:
+        rclpy.init()
+        executor = MultiThreadedExecutor(num_threads=2)
+        node = StretchBodyNode()
+        executor.add_node(node)
+        executor.spin()
+    except (KeyboardInterrupt, ThreadServiceExit):
+        node.robot.stop()
 
 
 if __name__ == '__main__':
