@@ -29,6 +29,7 @@ from std_msgs.msg import Header
 
 from hello_helpers.gripper_conversion import GripperConversion
 from .joint_trajectory_server import JointTrajectoryAction
+from .stretch_diagnostics import StretchDiagnostics
 
 GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
@@ -589,6 +590,7 @@ class StretchBodyNode(Node):
         # start action server for joint trajectories
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
         self.joint_trajectory_action = JointTrajectoryAction(self)
+        self.diagnostics = StretchDiagnostics(self, self.robot)
 
         if mode == "position":
             self.turn_on_position_mode()
