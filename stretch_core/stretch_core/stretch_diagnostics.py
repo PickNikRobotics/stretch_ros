@@ -31,7 +31,7 @@ def analyze_stepper(status, device):
     elif device.motor.status['runstop_on']:
         status.summary(WARN, 'Runstop on')
     else:
-        status.summary(OK, 'Hardware present')
+        status.summary(OK, 'Hardware present and calibrated')
 
     add_keyvalues_to_status(status, device.status, ['motor'])
     return status
@@ -44,7 +44,7 @@ def analyze_dynamixel(status, device, joint_name):
     elif not motor.is_calibrated:
         status.summary(WARN, 'Hardware not calibrated')
     else:
-        status.summary(OK, 'Hardware present')
+        status.summary(OK, 'Hardware present and calibrated')
 
     add_keyvalues_to_status(status, motor.status)
 
