@@ -35,6 +35,11 @@ def generate_launch_description():
                                  parameters=[{'robot_description': xacro.process_file(robot_description_path).toxml()},
                                              {'publish_frequency': 15.0}])
 
+    aggregator = Node(package='diagnostic_aggregator',
+                      executable='aggregator_node',
+                      output='log',
+                      parameters=[os.path.join(get_package_share_directory('stretch_core'), 'config/diagnostics.yaml')])
+
     declare_broadcast_odom_tf_arg = DeclareLaunchArgument(
         'broadcast_odom_tf',
         default_value=str(False),
