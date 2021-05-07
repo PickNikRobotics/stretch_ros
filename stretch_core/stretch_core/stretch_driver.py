@@ -26,8 +26,8 @@ from std_srvs.srv import Trigger
 from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import JointState, Imu, MagneticField
-from std_msgs.msg import Header
+from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField
+from std_msgs.msg import Header, Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
 from .joint_trajectory_server import JointTrajectoryAction
@@ -238,6 +238,28 @@ class StretchBodyNode(Node):
         odom.twist.twist.angular.z = theta_vel
         self.odom_pub.publish(odom)
 
+        # TODO: Add way to determine if the robot is charging
+        # TODO: Calculate the percentage
+        battery_state = BatteryState()
+        invalid_reading = float('NaN')
+        battery_state.header.stamp = current_stamp
+        battery_state.voltage = float(robot_status['pimu']['voltage'])
+        battery_state.current = float(robot_status['pimu']['current'])
+        battery_state.charge = invalid_reading
+        battery_state.capacity = invalid_reading
+        battery_state.percentage = invalid_reading
+        battery_state.design_capacity = 18.0
+        battery_state.present = True
+        self.power_pub.publish(battery_state)
+
+        calibration_status = Bool()
+        calibration_status.data = self.robot.is_calibrated()
+        self.calibration_pub.publish(calibration_status)
+
+        mode_msg = String()
+        mode_msg.data = self.robot_mode
+        self.mode_pub.publish(mode_msg)
+
         # publish joint state for the arm
         joint_state = JointState()
         joint_state.header.stamp = current_stamp
@@ -415,8 +437,7 @@ class StretchBodyNode(Node):
 
     def calibrate(self):
         def code_to_run():
-            self.robot.lift.home()
-            self.robot.arm.home()
+            self.robot.home()
         self.change_mode('calibration', code_to_run)
 
     ######## SERVICE CALLBACKS #######
@@ -440,6 +461,15 @@ class StretchBodyNode(Node):
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
         response.success = True
         response.message = 'Stopped the robot.'
+        return response
+
+    def calibrate_callback(self, request, response):
+        self.get_logger().info('Received calibrate_the_robot service call.')
+
+        self.calibrate()
+
+        response.success = True
+        response.message = 'Calibrated.'
         return response
 
     def navigation_mode_service_callback(self, request, response):
@@ -559,6 +589,10 @@ class StretchBodyNode(Node):
 
         self.odom_pub = self.create_publisher(Odometry, 'odom', 1)
 
+        self.power_pub = self.create_publisher(BatteryState, 'battery', 1)
+        self.calibration_pub = self.create_publisher(Bool, 'is_calibrated', 1)
+        self.mode_pub = self.create_publisher(String, 'mode', 1)
+
         self.imu_mobile_base_pub = self.create_publisher(Imu, 'imu_mobile_base', 1)
         self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
         self.imu_wrist_pub = self.create_publisher(Imu, 'imu_wrist', 1)
@@ -617,6 +651,10 @@ class StretchBodyNode(Node):
         self.stop_the_robot_service = self.create_service(Trigger,
                                                           '/stop_the_robot',
                                                           self.stop_the_robot_callback)
+
+        self.calibrate_the_robot_service = self.create_service(Trigger,
+                                                               '/calibrate_the_robot',
+                                                               self.calibrate_callback)
 
         self.runstop_service = self.create_service(SetBool,
                                                    '/runstop',
