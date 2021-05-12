@@ -83,6 +83,7 @@ def generate_launch_description():
     robot_description_semantic = {'robot_description_semantic' : robot_description_semantic_config}
 
     kinematics_yaml = load_yaml('stretch_moveit_config', 'config/kinematics.yaml')
+    sensors_yaml = load_yaml('stretch_moveit_config', 'config/sensors_3d.yaml')
 
     joint_limits_yaml = load_joint_limits_from_config()
 
@@ -116,6 +117,7 @@ def generate_launch_description():
                                parameters=[robot_description,
                                            robot_description_semantic,
                                            kinematics_yaml,
+                                           sensors_yaml,
                                            joint_limits_yaml,
                                            ompl_planning_pipeline_config,
                                            trajectory_execution,
