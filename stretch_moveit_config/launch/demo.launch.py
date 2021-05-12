@@ -7,6 +7,7 @@ from ament_index_python.packages import get_package_share_directory
 import xacro
 import argparse
 import sys
+from math import pi
 
 def load_file(package_name, file_path):
     package_path = get_package_share_directory(package_name)
@@ -109,6 +110,18 @@ def generate_launch_description():
                                          "publish_state_updates": True,
                                          "publish_transforms_updates": True}
 
+    stretch_sensor_manager = {'moveit_sensor_manager': 'stretch_sensor_manager/StretchSensorManager',
+                              'stretch_sensor_manager': {
+                                  'sensor_name': 'head',
+                                  'head': {
+                                      'planning_group': 'stretch_head',
+                                      'min_dist': 0.0,
+                                      'max_dist': 10.0,
+                                      'x_angle': 2 * pi,
+                                      'y_angle': 2 * pi
+                                  }
+                              }}
+
     # Start the actual move_group node/action server
     run_move_group_node = Node(package='moveit_ros_move_group',
                                executable='move_group',
@@ -120,7 +133,8 @@ def generate_launch_description():
                                            ompl_planning_pipeline_config,
                                            trajectory_execution,
                                            moveit_controllers,
-                                           planning_scene_monitor_parameters])
+                                           planning_scene_monitor_parameters,
+                                           stretch_sensor_manager])
     ld.add_action(run_move_group_node)
 
     # RViz
