@@ -6,9 +6,9 @@ from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
 
 # https://github.com/intel-ros/realsense
-launch_arguments = {'accel_fps': '63',
-                    'gyro_fps': '200',
-                    'depth_fps': '15',
+launch_arguments = {'accel_fps': '63.0',
+                    'gyro_fps': '200.0',
+                    'depth_fps': '15.0',
                     'enable_infra1': 'false',
                     'enable_infra2': 'false',
                     'enable_accel': 'true',
@@ -16,7 +16,7 @@ launch_arguments = {'accel_fps': '63',
                     'depth_height': LaunchConfiguration('depth_height'),
                     'color_width': LaunchConfiguration('color_width'),
                     'color_height': LaunchConfiguration('color_height'),
-                    'color_fps': '15',
+                    'color_fps': '15.0',
                     # publish depth streams aligned to other streams
                     'align_depth': 'true',
                     # publish an RGBD point cloud
@@ -46,7 +46,7 @@ def generate_launch_description():
     # accelerometer)."
     # https://realsense.intel.com/how-to-getting-imu-data-from-d435i-and-t265/
     realsense2_camera_node = IncludeLaunchDescription(PythonLaunchDescriptionSource(
-        PathJoinSubstitution([FindPackageShare('realsense2_camera'), 'config', 'rs_launch.py'])),
+        PathJoinSubstitution([FindPackageShare('realsense2_camera'), 'launch', 'rs_launch.py'])),
         launch_arguments=launch_arguments)
 
     return LaunchDescription([DeclareLaunchArgument('depth_width'),
