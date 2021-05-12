@@ -10,6 +10,7 @@
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
     <group name="stretch_arm">
+        <link name="link_gripper"/>
         <joint name="joint_lift"/>
         <joint name="joint_arm_l4"/>
         <joint name="joint_arm_l3"/>
@@ -67,6 +68,14 @@
         <joint name="joint_head_pan" value="1.0"/>
         <joint name="joint_head_tilt" value="0.5"/>
     </group_state>
+    <group_state name="open" group="gripper">
+        <joint name="joint_gripper_finger_left" value="0.3"/>
+        <joint name="joint_gripper_finger_right" value="0.3"/>
+    </group_state>
+    <group_state name="closed" group="gripper">
+        <joint name="joint_gripper_finger_left" value="0.0"/>
+        <joint name="joint_gripper_finger_right" value="0.0"/>
+    </group_state>
     <group_state name="home_base" group="mobile_base_arm">
         <joint name="joint_arm_l0" value="0"/>
         <joint name="joint_arm_l1" value="0"/>
@@ -86,7 +95,7 @@
         <joint name="position" value="1 0 0"/>
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
-    <end_effector name="gripper" parent_link="link_grasp_center" group="stretch_arm"/>
+    <end_effector name="gripper" parent_link="link_gripper" group="gripper" parent_group="stretch_arm"/>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <virtual_joint name="position" type="planar" parent_frame="odom" child_link="base_link"/>
     <joint_property joint_name="position" property_name="motion_model" value="diff_drive" />
@@ -423,4 +432,9 @@
     <disable_collisions link1="link_right_wheel" link2="link_wrist_yaw" reason="Never"/>
     <disable_collisions link1="link_right_wheel" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="respeaker_base" reason="Never"/>
+
+    <!-- Temporary measure to ignore collisions between the two pieces of the gripper
+         until we figure out a better model for the gripper. -->
+    <disable_collisions link1="link_gripper_finger_left" link2="link_gripper_finger_right" reason="physics"/>
+    <disable_collisions link1="link_gripper_fingertip_left" link2="link_gripper_fingertip_right" reason="physics"/>
 </robot>
