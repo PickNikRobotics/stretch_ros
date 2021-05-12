@@ -61,6 +61,7 @@ def generate_launch_description():
     stretch_driver = Node(package='stretch_core',
                           executable='stretch_driver',
                           name='stretch_driver',
+                          emulate_tty=True,
                           remappings=[('cmd_vel', '/stretch/cmd_vel'),
                                       ('joint_states', '/stretch/joint_states')],
                           parameters=[{'rate': 25.0},
@@ -75,4 +76,5 @@ def generate_launch_description():
                               declare_mode_arg,
                               joint_state_publisher,
                               robot_state_publisher,
+                              aggregator,
                               stretch_driver])
