@@ -8,11 +8,10 @@ from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
-    ld = LaunchDescription()
     package_prefix = get_package_share_directory('stretch_core')
 
     driver_py = PythonLaunchDescriptionSource([package_prefix, '/launch/stretch_driver.launch.py'])
-    ld.add_action(IncludeLaunchDescription(driver_py, launch_arguments={'broadcast_odom_tf': 'true'}.items()))
+    driver_launch = IncludeLaunchDescription(driver_py, launch_arguments={'broadcast_odom_tf': 'true'}.items())
 
     resolution_arg = DeclareLaunchArgument(
         'high_res',
@@ -27,15 +26,17 @@ def generate_launch_description():
     lo_realsense_py = PythonLaunchDescriptionSource([package_prefix, '/launch/d435i_low_resolution.launch.py'])
     lo_realsense_launch = IncludeLaunchDescription(lo_realsense_py,
                                                    condition=UnlessCondition(LaunchConfiguration('high_res')))
-    ld.add_action(resolution_arg)
-    ld.add_action(hi_realsense_launch)
-    ld.add_action(lo_realsense_launch)
 
     rplidar_py = PythonLaunchDescriptionSource([package_prefix, '/launch/rplidar.launch.py'])
     rplidar_launch = IncludeLaunchDescription(rplidar_py)
-    ld.add_action(rplidar_launch)
 
     # TODO: Include respeaker
     # TODO: Include ekf
 
-    return ld
+    return LaunchDescription([
+        driver_launch,
+        resolution_arg,
+        hi_realsense_launch,
+        lo_realsense_launch,
+        rplidar_launch
+    ])
