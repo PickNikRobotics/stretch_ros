@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 2  # Hz
+    update_rate: 100  # Hz
 
     stretch_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -10,6 +10,11 @@ controller_manager:
 
 stretch_controller:
   ros__parameters:
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
     allow_partial_joints_goal: true
     joints:
       - joint_lift
