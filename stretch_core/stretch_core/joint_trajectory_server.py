@@ -1,6 +1,10 @@
 #! /usr/bin/env python
 from __future__ import print_function
 
+import traceback
+
+from hello_helpers.hello_misc import to_sec
+
 import rclpy
 from rclpy.action import ActionServer
 from control_msgs.action import FollowJointTrajectory
@@ -14,8 +18,12 @@ from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
 
 class JointTrajectoryAction:
 
-    def __init__(self, node):
+    def __init__(self, node, trajectory_rate, ignore_trajectory_velocities, ignore_trajectory_accelerations):
         self.node = node
+        self.trajectory_rate = self.node.create_rate(trajectory_rate)
+        self.ignore_trajectory_velocities = ignore_trajectory_velocities
+        self.ignore_trajectory_accelerations = ignore_trajectory_accelerations
+
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
                                    self.execute_cb)
         self.feedback = FollowJointTrajectory.Feedback()
@@ -53,6 +61,9 @@ class JointTrajectoryAction:
         self.mobile_base_cg = MobileBaseCommandGroup(virtual_range_m=(-0.5, 0.5))
 
     def execute_cb(self, goal_handle):
+        if self.node.robot_mode == 'manipulation':
+            return self.execute_trajectory(goal_handle)
+
         self.goal_handle = goal_handle
         goal = goal_handle.request
         with self.node.robot_stop_lock:
@@ -204,3 +215,57 @@ class JointTrajectoryAction:
         self.result.error_code = self.result.SUCCESSFUL
         self.result.error_string = success_str
         self.goal_handle.succeed()
+
+    def execute_trajectory(self, goal_handle):
+        try:
+            with self.node.robot_stop_lock:
+                # Escape stopped mode to execute trajectory
+                self.node.stop_the_robot = False
+                self.node.robot_mode_rwlock.acquire_read()
+
+            # Process the goal
+            goal = goal_handle.request
+
+            if self.ignore_trajectory_velocities or self.ignore_trajectory_accelerations:
+                for pt in goal.trajectory.points:
+                    if self.ignore_trajectory_velocities:
+                        pt.velocities = []
+                    if self.ignore_trajectory_accelerations:
+                        pt.accelerations = []
+
+            # Print the goal
+            if goal.trajectory.points:
+                dt = to_sec(goal.trajectory.points[-1].time_from_start)
+                n_points = len(goal.trajectory.points)
+            else:
+                dt = 0.0
+                n_points = 0
+
+            n_joints = len(goal.trajectory.joint_names)
+            self.node.get_logger().info(
+                f'New follow_joint_trajectory goal with {n_points} points, {n_joints} joints over {dt} seconds.')
+
+            # TODO: Add the waypoints
+
+            self.node.robot.start_trajectory()
+
+            while rclpy.ok() and self.node.robot.is_trajectory_executing():
+                # TODO: Publish Feedback
+                # TODO: Check Path Tolerances
+                self.trajectory_rate.sleep()
+
+            self.node.robot.stop_trajectory()
+
+            # TODO: Check Goal Tolerances
+
+            goal_handle.succeed()
+            return FollowJointTrajectory.Result(error_code=FollowJointTrajectory.Result.SUCCESSFUL,
+                                                error_string='Achieved all target points.')
+
+        except Exception as e:
+            self.node.robot.stop_trajectory()
+            self.node.get_logger().error(str(traceback.format_exc()))
+            goal_handle.abort()
+            return FollowJointTrajectory.Result(error_code=-10000, error_string=str(e))
+        finally:
+            self.node.robot_mode_rwlock.release_read()

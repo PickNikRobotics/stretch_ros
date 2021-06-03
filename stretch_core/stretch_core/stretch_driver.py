@@ -530,6 +530,9 @@ class StretchBodyNode(Node):
         self.declare_parameter('rate', 15.0)
         self.declare_parameter('use_fake_mechaduinos', False)
         self.declare_parameter('fail_out_of_range_goal', True)
+        self.declare_parameter('ignore_trajectory_velocities', False)
+        self.declare_parameter('ignore_trajectory_accelerations', True)
+        self.declare_parameter('trajectory_rate', 10.0)
         # self.set_parameters_callback(self.parameter_callback)
 
         mode = self.get_parameter('mode').value
@@ -626,7 +629,16 @@ class StretchBodyNode(Node):
 
         # start action server for joint trajectories
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
-        self.joint_trajectory_action = JointTrajectoryAction(self)
+        trajectory_rate = self.get_parameter('fail_out_of_range_goal').value
+        ignore_trajectory_velocities = self.get_parameter('ignore_trajectory_velocities').value
+        ignore_trajectory_accelerations = self.get_parameter('ignore_trajectory_accelerations').value
+        if not ignore_trajectory_velocities and ignore_trajectory_accelerations:
+            self.get_logger().warn('Invalid to set ignore_trajectory_velocities to False and '
+                                   'ignore_trajectory_accelerations to True. '
+                                   'Setting ignore_trajectory_velocities to True.')
+            ignore_trajectory_velocities = True
+        self.joint_trajectory_action = JointTrajectoryAction(self, trajectory_rate, ignore_trajectory_velocities,
+                                                             ignore_trajectory_accelerations)
         self.diagnostics = StretchDiagnostics(self, self.robot)
 
         if mode == "position":

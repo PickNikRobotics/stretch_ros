@@ -241,3 +241,8 @@ def bound_ros_command(bounds, ros_pos, fail_out_of_range_goal, clip_ros_toleranc
             return bounds[1]
 
     return ros_pos
+
+
+def to_sec(duration):
+    """Given a message of type builtin_interfaces/Duration return the number of seconds as a float."""
+    return duration.sec + duration.nanosec / 1e9
