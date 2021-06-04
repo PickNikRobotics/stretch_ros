@@ -10,10 +10,12 @@ from rclpy.action import ActionServer
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 
+from .action_exceptions import FollowJointTrajectoryException, InvalidGoalException, InvalidJointException
 from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
                             WristYawCommandGroup, GripperCommandGroup, \
                             TelescopingCommandGroup, LiftCommandGroup, \
                             MobileBaseCommandGroup
+from .trajectory_components import get_trajectory_components
 
 
 class JointTrajectoryAction:
@@ -59,6 +61,8 @@ class JointTrajectoryAction:
                                                       self.node.wrist_extension_calibrated_retracted_offset_m)
         self.lift_cg = LiftCommandGroup(tuple(r.lift.params['range_m']))
         self.mobile_base_cg = MobileBaseCommandGroup(virtual_range_m=(-0.5, 0.5))
+
+        self.trajectory_components = get_trajectory_components(r)
 
     def execute_cb(self, goal_handle):
         if self.node.robot_mode == 'manipulation':
@@ -226,6 +230,17 @@ class JointTrajectoryAction:
             # Process the goal
             goal = goal_handle.request
 
+            # Check for valid positions
+            for i, pt in enumerate(goal.trajectory.points):
+                if len(pt.positions) != len(goal.trajectory.joint_names):
+                    raise InvalidGoalException(f'Goal point with index {i} has {len(pt.positions)} positions '
+                                               f'but should have {len(goal.joint_names)}')
+
+            # Check for invalid names
+            for name in goal.trajectory.joint_names:
+                if name not in self.trajectory_components:
+                    raise InvalidJointException(f'Cannot find joint "{name}"')
+
             if self.ignore_trajectory_velocities or self.ignore_trajectory_accelerations:
                 for pt in goal.trajectory.points:
                     if self.ignore_trajectory_velocities:
@@ -245,7 +260,15 @@ class JointTrajectoryAction:
             self.node.get_logger().info(
                 f'New follow_joint_trajectory goal with {n_points} points, {n_joints} joints over {dt} seconds.')
 
-            # TODO: Add the waypoints
+            for index, name in enumerate(goal.trajectory.joint_names):
+                t_comp = self.trajectory_components[name]
+
+                # Set Initial waypoint
+                goal.trajectory.points[0].positions[index] = t_comp.get_position()
+                if index < len(goal.trajectory.points[0].velocities):
+                    goal.trajectory.points[0].velocities[index] = t_comp.get_velocity()
+
+                t_comp.add_waypoints(goal.trajectory.points, index)
 
             self.node.robot.start_trajectory()
 
@@ -262,6 +285,10 @@ class JointTrajectoryAction:
             return FollowJointTrajectory.Result(error_code=FollowJointTrajectory.Result.SUCCESSFUL,
                                                 error_string='Achieved all target points.')
 
+        except FollowJointTrajectoryException as e:
+            self.node.get_logger().error(str(e))
+            goal_handle.abort()
+            return FollowJointTrajectory.Result(error_code=e.CODE, error_string=str(e))
         except Exception as e:
             self.node.robot.stop_trajectory()
             self.node.get_logger().error(str(traceback.format_exc()))
