@@ -266,6 +266,8 @@ class JointTrajectoryAction:
             self.node.robot.stop_trajectory()
             self.node.get_logger().error(str(traceback.format_exc()))
             goal_handle.abort()
-            return FollowJointTrajectory.Result(error_code=-10000, error_string=str(e))
+
+            # There is no error code for "unknown error" so we just use -100.
+            return FollowJointTrajectory.Result(error_code=-100, error_string=str(e))
         finally:
             self.node.robot_mode_rwlock.release_read()
