@@ -12,7 +12,7 @@ class TrajectoryComponent:
     def get_velocity(self):
         return self.trajectory_manager.status['vel']
 
-    def get_desired_position(self, dt):
+    def get_desired_position_at(self, dt):
         return self.trajectory_manager.trajectory.evaluate_at(dt).position
 
     def add_waypoints(self, waypoints, index):
