@@ -270,10 +270,33 @@ class JointTrajectoryAction:
 
                 t_comp.add_waypoints(goal.trajectory.points, index)
 
+            start_time = self.node.get_clock().now()
             self.node.robot.start_trajectory()
 
+            feedback = FollowJointTrajectory.Feedback()
+            feedback.joint_names = goal.trajectory.joint_names
             while rclpy.ok() and self.node.robot.is_trajectory_executing():
-                # TODO: Publish Feedback
+                now = self.node.get_clock().now()
+                feedback.header.stamp = now.to_msg()
+                feedback.desired.time_from_start = (now - start_time).to_msg()
+                feedback.actual.time_from_start = feedback.desired.time_from_start
+                feedback.error.time_from_start = feedback.desired.time_from_start
+                feedback.desired.positions = []
+                feedback.actual.positions = []
+                feedback.error.positions = []
+
+                dt = to_sec(feedback.desired.time_from_start)
+                for joint_name in feedback.joint_names:
+                    t_comp = self.trajectory_components[joint_name]
+                    actual_pos = t_comp.get_position()
+                    desired_pos = t_comp.get_desired_position_at(dt)
+
+                    feedback.actual.positions.append(actual_pos)
+                    feedback.desired.positions.append(desired_pos)
+                    feedback.error.positions.append(actual_pos - desired_pos)
+
+                goal_handle.publish_feedback(feedback)
+
                 # TODO: Check Path Tolerances
                 self.trajectory_rate.sleep()
 
