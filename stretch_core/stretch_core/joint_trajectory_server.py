@@ -8,7 +8,8 @@ from hello_helpers.hello_misc import to_sec
 import rclpy
 from rclpy.action import ActionServer
 from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
+
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from .action_exceptions import FollowJointTrajectoryException, InvalidGoalException, InvalidJointException
 from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
@@ -16,6 +17,88 @@ from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
                             TelescopingCommandGroup, LiftCommandGroup, \
                             MobileBaseCommandGroup
 from .trajectory_components import get_trajectory_components
+
+
+def merge_arm_joints(trajectory):
+    """Consolidate the arm joints into a single joint.
+
+    There are two ways to specify the state of the telescoping arm.
+    One is with a single joint, named wrist_extension, the other is with multiple joints named
+    joint_arm_l0, joint_arm_l1, joint_arm_l2, and joint_arm_l3.
+
+    Since the arm joints are not independently actuatable, we consolidate the multiple joints into one.
+    For each trajectory point, the resulting single joint has a position equal to the sum of all the individual
+    joint positions, and a velocity and acceleration equal to the average over all the individual values (if specified).
+    """
+    new_trajectory = JointTrajectory()
+    arm_indexes = []
+    for index, name in enumerate(trajectory.joint_names):
+        if 'joint_arm_l' in name:
+            arm_indexes.append(index)
+        else:
+            new_trajectory.joint_names.append(name)
+
+    # If individual arm joints are not present, the original trajectory is fine
+    if not arm_indexes:
+        return trajectory
+
+    if 'wrist_extension' in trajectory.joint_names:
+        raise InvalidJointException('Received a command for the wrist_extension joint and one or more '
+                                    'telescoping_joints. These are mutually exclusive options. '
+                                    f'The joint names in the received command = {trajectory.joint_names}')
+
+    if len(arm_indexes) != 4:
+        raise InvalidJointException('Commands with telescoping joints requires all telescoping joints to be present. '
+                                    f'Only received {len(arm_indexes)} of 4 telescoping joints.')
+
+    # Set up points and variables to track arm values
+    total_extension = []
+    arm_velocities = []
+    arm_accelerations = []
+    for point in trajectory.points:
+        new_point = JointTrajectoryPoint()
+        new_point.time_from_start = point.time_from_start
+        new_trajectory.points.append(new_point)
+
+        total_extension.append(0.0)
+        arm_velocities.append([])
+        arm_accelerations.append([])
+
+    # Calculate the sum / gather values for averages
+    for index, name in enumerate(trajectory.joint_names):
+        for point_index, point in enumerate(trajectory.points):
+            x = point.positions[index]
+            v = point.velocities[index] if index < len(point.velocities) else None
+            a = point.accelerations[index] if index < len(point.accelerations) else None
+
+            if index in arm_indexes:
+                total_extension[point_index] += x
+                if v is not None:
+                    arm_velocities[point_index].append(v)
+                if a is not None:
+                    arm_accelerations[point_index].append(a)
+            # If this is a non-arm joint, then just copy the values to the new trajectory
+            else:
+                new_point = new_trajectory.points[point_index]
+                new_point.positions.append(x)
+                if v is not None:
+                    new_point.velocities.append(v)
+                if a is not None:
+                    new_point.accelerations.append(a)
+
+    # Now add the arm values
+    new_trajectory.joint_names.append('wrist_extension')
+    for point_index, new_point in enumerate(new_trajectory.points):
+        new_point.positions.append(total_extension[point_index])
+        vels = arm_velocities[point_index]
+        accels = arm_accelerations[point_index]
+
+        if vels:
+            new_point.velocities.append(sum(vels) / len(vels))
+        if accels:
+            new_point.accelerations.append(sum(accels) / len(accels))
+
+    return new_trajectory
 
 
 class JointTrajectoryAction:
@@ -235,6 +318,8 @@ class JointTrajectoryAction:
                 if len(pt.positions) != len(goal.trajectory.joint_names):
                     raise InvalidGoalException(f'Goal point with index {i} has {len(pt.positions)} positions '
                                                f'but should have {len(goal.joint_names)}')
+
+            goal.trajectory = merge_arm_joints(goal.trajectory)
 
             # Check for invalid names
             for name in goal.trajectory.joint_names:
