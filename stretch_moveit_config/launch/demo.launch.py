@@ -38,11 +38,13 @@ def load_yaml(package_name, file_path):
 
 # Mapping from entry in the stretch_body configuration to joints in the SRDF
 CONFIGURATION_TRANSLATION = {
-    'lift': ['lift'],
-    'wrist_yaw': ['wrist_yaw'],
+    'lift': ['joint_lift'],
+    'wrist_yaw': ['joint_wrist_yaw'],
     'stretch_gripper': ['joint_gripper_finger_left', 'joint_gripper_finger_right'],
     'base': ['position/x', 'position/theta'],
-    'arm': ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3']
+    'arm': ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3'],
+    'head_pan': ['joint_head_pan'],
+    'head_tilt': ['joint_head_tilt'],
 }
 
 
@@ -57,10 +59,12 @@ def load_joint_limits_from_config(mode='default'):
             config_limits = config['motion'].get(mode, {})
             result = {}
             for name, abrev in [('velocity', 'vel'), ('acceleration', 'accel')]:
-                cfg_name = f'{abrev}_m'
-                if cfg_name in config_limits:
+                if abrev in config_limits:
                     result[f'has_{name}_limits'] = True
-                    result[f'max_{name}'] = config_limits[cfg_name]
+                    result[f'max_{name}'] = config_limits[abrev]
+                elif f'{abrev}_m' in config_limits:
+                    result[f'has_{name}_limits'] = True
+                    result[f'max_{name}'] = config_limits[f'{abrev}_m']
                 else:
                     result[f'has_{name}_limits'] = False
             for joint_name in joint_names:
