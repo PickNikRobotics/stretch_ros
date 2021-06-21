@@ -59,3 +59,15 @@ repositories:
     type: git
     url: https://github.com/ros-controls/realtime_tools
     version: foxy-devel
+  realsense-ros:
+    type: git
+    url: https://github.com/vatanaksoytezer/realsense-ros
+    version: ros2
+  ros-ign:
+    type: git
+    url: https://github.com/vatanaksoytezer/ros_ign
+    version: feature/add_system_clock
+  aws-robomaker-small-house-world:
+    type: git
+    url: https://github.com/vatanaksoytezer/aws-robomaker-small-house-world
+    version: ignition-port
