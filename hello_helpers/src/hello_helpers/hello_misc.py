@@ -14,7 +14,10 @@ from rclpy.action import ActionClient
 import numpy as np
 import cv2
 
+import pyquaternion
+
 from control_msgs.action import FollowJointTrajectory
+from geometry_msgs.msg import Transform
 from trajectory_msgs.msg import JointTrajectoryPoint
 import tf2_ros
 from sensor_msgs.msg import PointCloud2
@@ -246,3 +249,32 @@ def bound_ros_command(bounds, ros_pos, fail_out_of_range_goal, clip_ros_toleranc
 def to_sec(duration):
     """Given a message of type builtin_interfaces/Duration return the number of seconds as a float."""
     return duration.sec + duration.nanosec / 1e9
+
+
+def transform_to_triple(transform):
+    """Given a message of type geometry_msgs/Transform, return the equivalent x/y/theta triple."""
+    x = transform.translation.x
+    y = transform.translation.y
+
+    quat = transform.rotation
+    q = pyquaternion.Quaternion(x=quat.x, y=quat.y, z=quat.z, w=quat.w)
+    yaw, pitch, roll = q.yaw_pitch_roll
+    return x, y, yaw
+
+
+def to_transform(d):
+    """Given a dictionary with keys x y and theta, return the equivalent geometry_msgs/Transform."""
+    t = Transform()
+    t.translation.x = d['x']
+    t.translation.y = d['y']
+    quaternion = pyquaternion.Quaternion(axis=[0, 0, 1], angle=d['theta'])
+    t.rotation.w = quaternion.w
+    t.rotation.x = quaternion.x
+    t.rotation.y = quaternion.y
+    t.rotation.z = quaternion.z
+    return t
+
+
+def twist_to_pair(msg):
+    """Given a message of type geometry_msgs/Twist, return the linear and angular components of the velocity."""
+    return msg.linear.x, msg.angular.z

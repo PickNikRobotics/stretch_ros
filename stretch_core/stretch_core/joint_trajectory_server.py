@@ -3,15 +3,19 @@ from __future__ import print_function
 
 import traceback
 
+from control_msgs.action import FollowJointTrajectory
+from control_msgs.msg import JointComponentTolerance
+
+from hello_helpers.gripper_conversion import GripperConversion
 from hello_helpers.hello_misc import to_sec
 
 import rclpy
 from rclpy.action import ActionServer
-from control_msgs.action import FollowJointTrajectory
 
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-from .action_exceptions import FollowJointTrajectoryException, InvalidGoalException, InvalidJointException
+from .action_exceptions import FollowJointTrajectoryException, GoalToleranceException, PathToleranceException
+from .action_exceptions import InvalidGoalException, InvalidJointException
 from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
                             WristYawCommandGroup, GripperCommandGroup, \
                             TelescopingCommandGroup, LiftCommandGroup, \
@@ -99,6 +103,71 @@ def merge_arm_joints(trajectory):
             new_point.accelerations.append(sum(accels) / len(accels))
 
     return new_trajectory
+
+
+def preprocess_gripper_trajectory(trajectory):
+    """Process the trajectory to allow for a variety of ways to specify the gripper position.
+
+    Ultimately, we want our trajectory to have one gripper joint called
+    stretch_gripper using "finger radians" as units.
+
+    We also allow the input trajectory to have two identical joints named joint_gripper_finger_left and
+    joint_gripper_finger_right. If the positions do not match for both of those joints, an Exception is thrown.
+    The units should already be "finger radians."
+
+    If only one of those two joints is specified, then we just rename it to stretch_gripper.
+
+    We also allow for a joint named gripper_aperture which has units in meters,
+    that we then convert to "finger radians."
+    """
+    gripper_joint_names = ['joint_gripper_finger_left', 'joint_gripper_finger_right', 'gripper_aperture']
+    present_gripper_joints = list(set(gripper_joint_names) & set(trajectory.joint_names))
+
+    # If no gripper joint names are present, no changes needed
+    if not present_gripper_joints:
+        return trajectory
+    elif len(present_gripper_joints) == 2:
+        if (gripper_joint_names[0] in present_gripper_joints and gripper_joint_names[1] in present_gripper_joints):
+            # Make sure that all the points are the same
+            left_index = trajectory.joint_names.index(gripper_joint_names[0])
+            right_index = trajectory.joint_names.index(gripper_joint_names[1])
+            for pt in trajectory.points:
+                if pt.positions[left_index] != pt.positions[right_index]:
+                    raise InvalidGoalException('Recieved a command that includes both the left and right gripper '
+                                               'joints and their commanded positions are not the same. '
+                                               f'{pt.position[left_index]} != {pt.position[right_index]}')
+                # Due dilligence would also check the velocity/acceleration, but leaving for now
+
+            # If all the points are the same, then we can safely eliminate one
+            trajectory.joint_names = trajectory.joint_names[:right_index] + trajectory.joint_names[right_index + 1:]
+            for pt in trajectory.points:
+                pt.positions = pt.positions[:right_index] + pt.positions[right_index + 1:]
+                if pt.velocities:
+                    pt.velocities = pt.velocities[:right_index] + pt.velocities[right_index + 1:]
+                if pt.accelerations:
+                    pt.accelerations = pt.accelerations[:right_index] + pt.accelerations[right_index + 1:]
+            present_gripper_joints = gripper_joint_names[:1]
+        else:
+            raise InvalidJointException('Recieved a command that includes an odd combination of gripper joints: '
+                                        f'{present_gripper_joints}')
+    elif len(present_gripper_joints) != 1:
+        raise InvalidJointException('Recieved a command that includes too many gripper joints: '
+                                    f'{present_gripper_joints}')
+
+    gripper_index = trajectory.joint_names.index(present_gripper_joints[0])
+
+    if present_gripper_joints[0] == 'gripper_aperture':
+        # Convert units
+        gc = GripperConversion()
+        for pt in trajectory.points:
+            pt.positions[gripper_index] = gc.aperture_to_finger_rad(pt.positions[gripper_index])
+            if pt.velocities:
+                pt.velocities[gripper_index] = gc.aperture_to_finger_rad(pt.velocities[gripper_index])
+            if pt.accelerations:
+                pt.accelerations[gripper_index] = gc.aperture_to_finger_rad(pt.accelerations[gripper_index])
+
+    trajectory.joint_names[gripper_index] = 'stretch_gripper'
+    return trajectory
 
 
 class JointTrajectoryAction:
@@ -320,11 +389,20 @@ class JointTrajectoryAction:
                                                f'but should have {len(goal.joint_names)}')
 
             goal.trajectory = merge_arm_joints(goal.trajectory)
+            goal.trajectory = preprocess_gripper_trajectory(goal.trajectory)
 
             # Check for invalid names
             for name in goal.trajectory.joint_names:
                 if name not in self.trajectory_components:
                     raise InvalidJointException(f'Cannot find joint "{name}"')
+            multi_dof_joints = goal.multi_dof_trajectory.joint_names
+            if len(multi_dof_joints) > 1 or (multi_dof_joints and multi_dof_joints[0] != 'position'):
+                raise InvalidJointException('Driver supports a single multi_dof joint named position. '
+                                            f'Got {multi_dof_joints} instead.')
+            for i, pt in enumerate(goal.multi_dof_trajectory.points):
+                if len(pt.transforms) != len(goal.multi_dof_trajectory.joint_names):
+                    raise InvalidGoalException(f'MultiDOF goal point with index {i} has {len(pt.transforms)} transforms '
+                                               f'but should have {len(goal.joint_names)}')
 
             if self.ignore_trajectory_velocities or self.ignore_trajectory_accelerations:
                 for pt in goal.trajectory.points:
@@ -333,15 +411,19 @@ class JointTrajectoryAction:
                     if self.ignore_trajectory_accelerations:
                         pt.accelerations = []
 
+            # Save the tolerances in a dictionary
+            path_tolerance_dict = {tol.name: tol for tol in goal.path_tolerance}
+            goal_tolerance_dict = {tol.name: tol for tol in goal.goal_tolerance}
+
             # Print the goal
             if goal.trajectory.points:
                 dt = to_sec(goal.trajectory.points[-1].time_from_start)
                 n_points = len(goal.trajectory.points)
             else:
-                dt = 0.0
-                n_points = 0
+                dt = to_sec(goal.multi_dof_trajectory.points[-1].time_from_start)
+                n_points = len(goal.multi_dof_trajectory.points)
 
-            n_joints = len(goal.trajectory.joint_names)
+            n_joints = len(goal.trajectory.joint_names) + len(goal.multi_dof_trajectory.joint_names)
             self.node.get_logger().info(
                 f'New follow_joint_trajectory goal with {n_points} points, {n_joints} joints over {dt} seconds.')
 
@@ -355,11 +437,15 @@ class JointTrajectoryAction:
 
                 t_comp.add_waypoints(goal.trajectory.points, index)
 
+            if goal.multi_dof_trajectory.joint_names:
+                self.trajectory_components['position'].add_waypoints(goal.multi_dof_trajectory.points, 0)
+
             start_time = self.node.get_clock().now()
             self.node.robot.start_trajectory()
 
             feedback = FollowJointTrajectory.Feedback()
             feedback.joint_names = goal.trajectory.joint_names
+            feedback.multi_dof_joint_names = goal.multi_dof_trajectory.joint_names
             while rclpy.ok() and self.node.robot.is_trajectory_executing():
                 now = self.node.get_clock().now()
                 feedback.header.stamp = now.to_msg()
@@ -380,14 +466,33 @@ class JointTrajectoryAction:
                     feedback.desired.positions.append(desired_pos)
                     feedback.error.positions.append(actual_pos - desired_pos)
 
+                if feedback.multi_dof_joint_names:
+                    feedback.multi_dof_actual.time_from_start = feedback.desired.time_from_start
+                    feedback.multi_dof_desired.time_from_start = feedback.desired.time_from_start
+
+                    t_comp = self.trajectory_components['position']
+                    actual_pos = t_comp.get_position()
+                    desired_pos = t_comp.get_desired_position_at(dt)
+
+                    feedback.multi_dof_actual.transforms = [actual_pos]
+                    feedback.multi_dof_desired.transforms = [desired_pos]
+                    # TODO: Compute the transform between the two transform positions
+                    # feedback.multi_dof_error.transforms = [actual_pos - desired_pos]
+                    # feedback.multi_dof_error.time_from_start = feedback.desired.time_from_start
+
                 goal_handle.publish_feedback(feedback)
 
-                # TODO: Check Path Tolerances
+                # Check tolerances after publishing feedback
+                self.check_tolerances(dt, path_tolerance_dict, goal.component_path_tolerance, is_path=True)
                 self.trajectory_rate.sleep()
 
             self.node.robot.stop_trajectory()
 
-            # TODO: Check Goal Tolerances
+            self.check_tolerances(dt, goal_tolerance_dict, goal.component_goal_tolerance, is_path=False)
+
+            if goal.goal_time_tolerance != 0.0:
+                # TODO: Check time tolerance
+                pass
 
             goal_handle.succeed()
             return FollowJointTrajectory.Result(error_code=FollowJointTrajectory.Result.SUCCESSFUL,
@@ -406,3 +511,55 @@ class JointTrajectoryAction:
             return FollowJointTrajectory.Result(error_code=-100, error_string=str(e))
         finally:
             self.node.robot_mode_rwlock.release_read()
+
+    def check_tolerances(self, dt, tolerance_dict, component_tolerances, is_path=False):
+        errors = []
+        tolerance_type = 'path' if is_path else 'goal'
+
+        # Check single DOF first
+        for name, tolerance in tolerance_dict.items():
+            t_comp = self.trajectory_components[name]
+            # TODO: This code just uses the specified tolerances and ignores the "default". See
+            # https://github.com/ros-controls/control_msgs/blob/galactic-devel/control_msgs/msg/JointTolerance.msg#L1
+            # for more info
+
+            actual = t_comp.get_position()
+            desired = t_comp.get_desired_position_at(dt)
+
+            diff = actual - desired
+            if abs(diff) > tolerance.position:
+                errors.append(f'Joint {name} exceeded {tolerance_type} tolerance: Actual: {actual:.3f} '
+                              f'Desired: {desired:.3f} Tolerance: {tolerance.position:.3f}')
+
+        # Check the multi_dof
+        for component_tolerance in component_tolerances:
+            t_comp = self.trajectory_components[component_tolerance.joint_name]
+            actual = t_comp.get_position()
+            desired = t_comp.get_desired_position_at(dt)
+            if component_tolerance.component == JointComponentTolerance.TRANSLATION:
+                # TODO: Compute euclidean
+                diff = 0.0
+                component = 'translation'
+            elif component_tolerance.component == JointComponentTolerance.ROTATION:
+                # TODO: Compute quaternion difference
+                diff = 0.0
+                component = 'translation'
+            else:
+                # X_AXIS=1, Y_AXIS=2, Z_AXIS=3
+                component = ['', 'x', 'y', 'z'][component_tolerance.component]
+                actual_component = getattr(actual.translation, component)
+                desired_component = getattr(desired.translation, component)
+                diff = desired_component - actual_component
+
+            if diff > component_tolerance.position:
+                errors.append(f'Joint {component_tolerance.joint_name} exceeded {tolerance_type} tolerance with '
+                              f'the {component} component: Actual: {actual_component:.3f} '
+                              f'Desired: {desired_component:.3f} Tolerance: {component_tolerance.position:.3f}')
+
+        if not errors:
+            return
+        err_str = '/'.join(errors)
+        if is_path:
+            raise PathToleranceException(err_str)
+        else:
+            raise GoalToleranceException(err_str)
