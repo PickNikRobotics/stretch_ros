@@ -113,7 +113,7 @@
       link="link_gripper_finger_left" />
     <axis
       xyz="0 0 1" />
-    <limit effort="100" lower="-0.6" upper="0.6" velocity="1.0"/>
+    <limit effort="100" lower="-0.526" upper="0.263" velocity="1.0"/>
   </joint>
   
   <link
@@ -224,7 +224,7 @@
       link="link_gripper_finger_right" />
     <axis
       xyz="0 0 1" />
-    <limit effort="100" lower="-0.6" upper="0.6" velocity="1.0"/>
+    <limit effort="100" lower="-0.526" upper="0.263" velocity="1.0"/>
   </joint>
   
   <link

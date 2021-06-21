@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import traceback
 
+from hello_helpers.gripper_conversion import GripperConversion
 from hello_helpers.hello_misc import to_sec
 
 import rclpy
@@ -99,6 +100,71 @@ def merge_arm_joints(trajectory):
             new_point.accelerations.append(sum(accels) / len(accels))
 
     return new_trajectory
+
+
+def preprocess_gripper_trajectory(trajectory):
+    """Process the trajectory to allow for a variety of ways to specify the gripper position.
+
+    Ultimately, we want our trajectory to have one gripper joint called
+    stretch_gripper using "finger radians" as units.
+
+    We also allow the input trajectory to have two identical joints named joint_gripper_finger_left and
+    joint_gripper_finger_right. If the positions do not match for both of those joints, an Exception is thrown.
+    The units should already be "finger radians."
+
+    If only one of those two joints is specified, then we just rename it to stretch_gripper.
+
+    We also allow for a joint named gripper_aperture which has units in meters,
+    that we then convert to "finger radians."
+    """
+    gripper_joint_names = ['joint_gripper_finger_left', 'joint_gripper_finger_right', 'gripper_aperture']
+    present_gripper_joints = list(set(gripper_joint_names) & set(trajectory.joint_names))
+
+    # If no gripper joint names are present, no changes needed
+    if not present_gripper_joints:
+        return trajectory
+    elif len(present_gripper_joints) == 2:
+        if (gripper_joint_names[0] in present_gripper_joints and gripper_joint_names[1] in present_gripper_joints):
+            # Make sure that all the points are the same
+            left_index = trajectory.joint_names.index(gripper_joint_names[0])
+            right_index = trajectory.joint_names.index(gripper_joint_names[1])
+            for pt in trajectory.points:
+                if pt.positions[left_index] != pt.positions[right_index]:
+                    raise InvalidGoalException('Recieved a command that includes both the left and right gripper '
+                                               'joints and their commanded positions are not the same. '
+                                               f'{pt.position[left_index]} != {pt.position[right_index]}')
+                # Due dilligence would also check the velocity/acceleration, but leaving for now
+
+            # If all the points are the same, then we can safely eliminate one
+            trajectory.joint_names = trajectory.joint_names[:right_index] + trajectory.joint_names[right_index + 1:]
+            for pt in trajectory.points:
+                pt.positions = pt.positions[:right_index] + pt.positions[right_index + 1:]
+                if pt.velocities:
+                    pt.velocities = pt.velocities[:right_index] + pt.velocities[right_index + 1:]
+                if pt.accelerations:
+                    pt.accelerations = pt.accelerations[:right_index] + pt.accelerations[right_index + 1:]
+            present_gripper_joints = gripper_joint_names[:1]
+        else:
+            raise InvalidJointException('Recieved a command that includes an odd combination of gripper joints: '
+                                        f'{present_gripper_joints}')
+    elif len(present_gripper_joints) != 1:
+        raise InvalidJointException('Recieved a command that includes too many gripper joints: '
+                                    f'{present_gripper_joints}')
+
+    gripper_index = trajectory.joint_names.index(present_gripper_joints[0])
+
+    if present_gripper_joints[0] == 'gripper_aperture':
+        # Convert units
+        gc = GripperConversion()
+        for pt in trajectory.points:
+            pt.positions[gripper_index] = gc.aperture_to_finger_rad(pt.positions[gripper_index])
+            if pt.velocities:
+                pt.velocities[gripper_index] = gc.aperture_to_finger_rad(pt.velocities[gripper_index])
+            if pt.accelerations:
+                pt.accelerations[gripper_index] = gc.aperture_to_finger_rad(pt.accelerations[gripper_index])
+
+    trajectory.joint_names[gripper_index] = 'stretch_gripper'
+    return trajectory
 
 
 class JointTrajectoryAction:
@@ -320,6 +386,7 @@ class JointTrajectoryAction:
                                                f'but should have {len(goal.joint_names)}')
 
             goal.trajectory = merge_arm_joints(goal.trajectory)
+            goal.trajectory = preprocess_gripper_trajectory(goal.trajectory)
 
             # Check for invalid names
             for name in goal.trajectory.joint_names:
