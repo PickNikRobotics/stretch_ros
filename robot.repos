@@ -1,0 +1,15 @@
+repositories:
+  stretch_ros:
+    type: git
+    url: https://github.com/PickNikRobotics/stretch_ros
+    version: galactic_devel
+
+  realsense-ros:
+    type: git
+    url: https://github.com/IntelRealSense/realsense-ros
+    version: foxy
+
+  librealsense:
+    type: git
+    url: https://github.com/IntelRealSense/librealsense
+    version: master
